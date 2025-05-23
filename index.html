@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ScriptCraft Pro - Advanced Storyboard & Script Editor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Source+Sans+Pro:wght@300;400;600;700&display=swap');
+    
+    body {
+      font-family: 'Source Sans Pro', sans-serif;
+    }
+    
+    .heading-font {
+      font-family: 'Playfair Display', serif;
+    }
+    
+    .script-editor {
+      font-family: 'Courier New', Courier, monospace;
+      line-height: 1.2;
+    }
+    
+    .script-editor:empty:before {
+      content: "Start typing your script here...";
+      color: #9ca3af;
+    }
+    
+    .script-editor:focus:empty:before {
+      content: "";
+    }
+    
+    /* Screenplay formatting classes */
+    .scene-heading {
+      font-weight: bold;
+      text-transform: uppercase;
+      margin: 1em 0 0.5em 0;
+    }
+    
+    .action {
+      margin: 0.5em 0;
+    }
+    
+    .character {
+      font-weight: bold;
+      margin-left: 4em;
+      margin-top: 1em;
+    }
+    
+    .dialogue {
+      margin-left: 2.5em;
+      margin-right: 2.5em;
+    }
+    
+    .parenthetical {
+      font-style: italic;
+      margin-left: 3em;
+      margin-right: 3em;
+    }
+    
+    .transition {
+      font-weight: bold;
+      text-transform: uppercase;
+      margin: 1em 0 0.5em 0;
+      text-align: right;
+    }
+    
+    .scene-card {
+      transition: all 0.3s ease;
+    }
+    
+    .scene-card:hover {
+      transform: translateY(-2px);
+    }
+    
+    .drawing-canvas {
+      touch-action: none;
+    }
+    
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+    
+    /* Animation for new scene */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+    
+    /* Formatting toolbar */
+    .format-toolbar {
+      background-color: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0.5rem;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    
+    .format-btn {
+      background-color: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.25rem;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    
+    .format-btn:hover {
+      background-color: #f1f5f9;
+    }
+    
+    .format-btn.active {
+      background-color: #e0e7ff;
+      border-color: #c7d2fe;
+    }
+    
+    /* Script management dropdown */
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      right: 0;
+      background-color: white;
+      min-width: 200px;
+      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+      z-index: 1;
+      border-radius: 0.375rem;
+      overflow: hidden;
+    }
+    
+    .dropdown-content a {
+      color: #4b5563;
+      padding: 0.75rem 1rem;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .dropdown-content a:hover {
+      background-color: #f3f4f6;
+    }
+    
+    .dropdown-content a.danger {
+      color: #dc2626;
+    }
+    
+    .show {
+      display: block;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100">
+  <div class="flex flex-col min-h-screen">
+    <!-- Top Navigation -->
+    <header class="bg-indigo-700 text-white shadow-md">
+      <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <i class="fas fa-film text-2xl"></i>
+          <h1 class="text-2xl font-bold heading-font">ScriptCraft Pro</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+          <button id="exportPdf" class="flex items-center space-x-1 px-3 py-1 bg-white text-indigo-700 rounded hover:bg-indigo-50 transition">
+            <i class="fas fa-file-pdf"></i>
+            <span>Export PDF</span>
+          </button>
+          <button id="exportImage" class="flex items-center space-x-1 px-3 py-1 bg-white text-indigo-700 rounded hover:bg-indigo-50 transition">
+            <i class="fas fa-file-image"></i>
+            <span>Export Image</span>
+          </button>
+          <button id="helpBtn" class="p-2 text-white hover:bg-indigo-600 rounded-full transition">
+            <i class="fas fa-question-circle text-xl"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+      <!-- Sidebar -->
+      <aside class="w-64 min-h-screen bg-gray-800 text-white flex-shrink-0 flex flex-col">
+        <div class="p-4 border-b border-gray-700">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xl font-semibold">Project Files</h2>
+            <button id="newProject" class="p-1 text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+              <i class="fas fa-plus"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="p-4 space-y-4 flex-1 overflow-y-auto">
+          <div class="space-y-2">
+            <label for="scriptSelector" class="block text-sm font-semibold text-gray-300">Current Script</label>
+            <div class="relative">
+              <select id="scriptSelector" class="w-full p-2 pr-8 border border-gray-600 bg-gray-700 text-white rounded appearance-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></select>
+              <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <i class="fas fa-chevron-down text-gray-400"></i>
+              </div>
+            </div>
+          </div>
+          
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-semibold text-gray-300">Script Actions</span>
+              <div class="relative">
+                <button id="scriptMenuToggle" class="p-1 text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                  <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <div id="scriptMenu" class="absolute right-0 mt-1 w-48 bg-white text-gray-800 border border-gray-200 rounded-md shadow-lg hidden z-10">
+                  <button id="newScript" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center space-x-2">
+                    <i class="fas fa-plus text-blue-500"></i>
+                    <span>New Script</span>
+                  </button>
+                  <button id="renameScript" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center space-x-2">
+                    <i class="fas fa-edit text-yellow-500"></i>
+                    <span>Rename Script</span>
+                  </button>
+                  <button id="duplicateScript" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center space-x-2">
+                    <i class="fas fa-copy text-green-500"></i>
+                    <span>Duplicate Script</span>
+                  </button>
+                  <div class="border-t border-gray-200"></div>
+                  <button id="deleteScript" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600 flex items-center space-x-2">
+                    <i class="fas fa-trash-alt"></i>
+                    <span>Delete Script</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="pt-4 border-t border-gray-700">
+            <button id="addScene" class="w-full flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-md transition">
+              <i class="fas fa-plus"></i>
+              <span>Add Scene</span>
+            </button>
+          </div>
+          
+          <div class="pt-4 border-t border-gray-700">
+            <h3 class="text-sm font-semibold text-gray-300 mb-2">Recent Scripts</h3>
+            <ul id="recentScripts" class="space-y-1">
+              <!-- Will be populated by JavaScript -->
+            </ul>
+          </div>
+        </div>
+        
+        <div class="p-4 border-t border-gray-700 bg-gray-900">
+          <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
+              <i class="fas fa-user text-white"></i>
+            </div>
+            <div>
+              <p class="text-sm font-medium">Local User</p>
+              <p class="text-xs text-gray-400">Working offline</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="flex-1 flex flex-col overflow-hidden">
+        <div class="bg-white border-b shadow-sm px-6 py-4">
+          <div class="flex justify-between items-center">
+            <h2 id="currentScriptTitle" class="text-xl font-bold text-gray-800">Untitled Script</h2>
+            <div class="flex space-x-2">
+              <button id="saveScript" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-md shadow-sm transition-all">
+                <i class="fas fa-save"></i>
+                Save
+              </button>
+              <button id="printScript" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-md shadow-sm transition-all">
+                <i class="fas fa-print"></i>
+                Print
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="flex-1 overflow-auto p-6 bg-gray-50">
+          <div class="max-w-4xl mx-auto">
+            <!-- Script Editor Section -->
+            <section class="mb-8">
+              <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="bg-gray-50 px-6 py-3 border-b border-gray-200 flex justify-between items-center">
+                  <h3 class="text-lg font-semibold text-gray-800">Script Editor</h3>
+                  <div class="flex space-x-2">
+                    <button id="formatHelp" class="text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1">
+                      <i class="fas fa-info-circle"></i>
+                      <span>Formatting Help</span>
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- Formatting Toolbar -->
+                <div class="format-toolbar">
+                  <button id="sceneHeadingBtn" class="format-btn" title="Scene Heading">
+                    <i class="fas fa-video"></i>
+                    <span>Scene</span>
+                  </button>
+                  <button id="actionBtn" class="format-btn" title="Action">
+                    <i class="fas fa-running"></i>
+                    <span>Action</span>
+                  </button>
+                  <button id="characterBtn" class="format-btn" title="Character">
+                    <i class="fas fa-user"></i>
+                    <span>Character</span>
+                  </button>
+                  <button id="dialogueBtn" class="format-btn" title="Dialogue">
+                    <i class="fas fa-comment"></i>
+                    <span>Dialogue</span>
+                  </button>
+                  <button id="parentheticalBtn" class="format-btn" title="Parenthetical">
+                    <i class="fas fa-comment-dots"></i>
+                    <span>Parenthetical</span>
+                  </button>
+                  <button id="transitionBtn" class="format-btn" title="Transition">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span>Transition</span>
+                  </button>
+                </div>
+                
+                <div class="p-6">
+                  <div id="scriptEditor" class="script-editor w-full min-h-[300px] p-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm whitespace-pre-wrap" contenteditable="true"></div>
+                  
+                  <div class="mt-4 flex justify-between items-center">
+                    <div class="text-sm text-gray-500">
+                      <span id="wordCount">0</span> words | 
+                      <span id="characterCount">0</span> characters
+                    </div>
+                    <div class="flex space-x-2">
+                      <button id="clearScript" class="text-sm text-red-600 hover:text-red-800">
+                        <i class="fas fa-trash-alt mr-1"></i>
+                        Clear All
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            
+            <!-- Scenes Section -->
+            <section id="scenesContainer" class="space-y-6">
+              <!-- Scenes will be added here -->
+            </section>
+            
+            <!-- Add Scene Button -->
+            <div class="mt-6 text-center">
+              <button id="addSceneBottom" class="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md shadow transition">
+                <i class="fas fa-plus"></i>
+                <span>Add Another Scene</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Help Modal -->
+  <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-auto">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-bold">ScriptCraft Pro Help</h3>
+          <button id="closeHelp" class="text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="space-y-4">
+          <div>
+            <h4 class="font-semibold text-lg mb-2">Script Formatting</h4>
+            <div class="bg-gray-50 p-4 rounded border border-gray-200">
+              <p class="mb-2">ScriptCraft automatically formats your screenplay as you type:</p>
+              <ul class="list-disc pl-5 space-y-1">
+                <li><strong>Scene Headings:</strong> Type <code>INT.</code> or <code>EXT.</code> to start a scene heading (auto-capitalized and bolded)</li>
+                <li><strong>Character Names:</strong> End with <code>:</code> to mark dialogue (will be bolded and centered)</li>
+                <li><strong>Parentheticals:</strong> Use <code>(like this)</code> for actions or expressions (will be italicized)</li>
+                <li><strong>Transitions:</strong> Type <code>CUT TO:</code> or <code>FADE OUT.</code> (auto-formatted)</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold text-lg mb-2">Storyboard Tools</h4>
+            <div class="bg-gray-50 p-4 rounded border border-gray-200">
+              <p class="mb-2">Each scene includes drawing tools for storyboarding:</p>
+              <ul class="list-disc pl-5 space-y-1">
+                <li>Choose brush size and shape</li>
+                <li>Select colors from the palette</li>
+                <li>Use the eraser tool to correct mistakes</li>
+                <li>Clear the canvas to start over</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div>
+            <h4 class="font-semibold text-lg mb-2">Keyboard Shortcuts</h4>
+            <div class="bg-gray-50 p-4 rounded border border-gray-200">
+              <ul class="list-disc pl-5 space-y-1">
+                <li><strong>Ctrl+S:</strong> Save current script</li>
+                <li><strong>Ctrl+N:</strong> Create new script</li>
+                <li><strong>Ctrl+Enter:</strong> Add new scene</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // DOM Elements
+      const scriptMenuToggle = document.getElementById('scriptMenuToggle');
+      const scriptMenu = document.getElementById('scriptMenu');
+      const newScript = document.getElementById('newScript');
+      const renameScript = document.getElementById('renameScript');
+      const duplicateScript = document.getElementById('duplicateScript');
+      const deleteScript = document.getElementById('deleteScript');
+      const scriptSelector = document.getElementById('scriptSelector');
+      const scriptEditor = document.getElementById('scriptEditor');
+      const addScene = document.getElementById('addScene');
+      const addSceneBottom = document.getElementById('addSceneBottom');
+      const saveScript = document.getElementById('saveScript');
+      const printScript = document.getElementById('printScript');
+      const clearScript = document.getElementById('clearScript');
+      const scenesContainer = document.getElementById('scenesContainer');
+      const currentScriptTitle = document.getElementById('currentScriptTitle');
+      const wordCount = document.getElementById('wordCount');
+      const characterCount = document.getElementById('characterCount');
+      const formatHelp = document.getElementById('formatHelp');
+      const helpBtn = document.getElementById('helpBtn');
+      const helpModal = document.getElementById('helpModal');
+      const closeHelp = document.getElementById('closeHelp');
+      const exportPdf = document.getElementById('exportPdf');
+      const exportImage = document.getElementById('exportImage');
+      const recentScripts = document.getElementById('recentScripts');
+      const newProject = document.getElementById('newProject');
+      
+      // Formatting buttons
+      const sceneHeadingBtn = document.getElementById('sceneHeadingBtn');
+      const actionBtn = document.getElementById('actionBtn');
+      const characterBtn = document.getElementById('characterBtn');
+      const dialogueBtn = document.getElementById('dialogueBtn');
+      const parentheticalBtn = document.getElementById('parentheticalBtn');
+      const transitionBtn = document.getElementById('transitionBtn');
+
+      // State
+      let currentScript = '';
+      let scripts = JSON.parse(localStorage.getItem('scriptcraft_scripts') || '{}');
+      let recentScriptList = JSON.parse(localStorage.getItem('scriptcraft_recent') || '[]');
+      let scenes = JSON.parse(localStorage.getItem('scriptcraft_scenes') || '{}');
+
+      // Initialize
+      loadScripts();
+      updateRecentScripts();
+      updateCounts();
+
+      // Event Listeners
+      scriptMenuToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        scriptMenu.classList.toggle('hidden');
+      });
+
+      document.addEventListener('click', () => {
+        scriptMenu.classList.add('hidden');
+      });
+
+      newScript.addEventListener('click', createNewScript);
+      renameScript.addEventListener('click', renameCurrentScript);
+      duplicateScript.addEventListener('click', duplicateCurrentScript);
+      deleteScript.addEventListener('click', deleteCurrentScript);
+
+      scriptSelector.addEventListener('change', () => {
+        currentScript = scriptSelector.value;
+        currentScriptTitle.textContent = currentScript || 'Untitled Script';
+        scriptEditor.innerHTML = scripts[currentScript] || '';
+        updateCounts();
+        addToRecentScripts(currentScript);
+        loadScenes();
+      });
+
+      scriptEditor.addEventListener('input', () => {
+        updateCounts();
+        autoFormatScript();
+      });
+
+      scriptEditor.addEventListener('keydown', handleKeyDown);
+
+      addScene.addEventListener('click', addNewScene);
+      addSceneBottom.addEventListener('click', addNewScene);
+
+      saveScript.addEventListener('click', saveCurrentScript);
+      printScript.addEventListener('click', () => window.print());
+      clearScript.addEventListener('click', clearCurrentScript);
+
+      formatHelp.addEventListener('click', () => helpModal.classList.remove('hidden'));
+      helpBtn.addEventListener('click', () => helpModal.classList.remove('hidden'));
+      closeHelp.addEventListener('click', () => helpModal.classList.add('hidden'));
+
+      exportPdf.addEventListener('click', exportToPdf);
+      exportImage.addEventListener('click', exportToImage);
+      newProject.addEventListener('click', createNewProject);
+
+      // Formatting buttons
+      sceneHeadingBtn.addEventListener('click', () => insertFormattedElement('scene-heading'));
+      actionBtn.addEventListener('click', () => insertFormattedElement('action'));
+      characterBtn.addEventListener('click', () => insertFormattedElement('character'));
+      dialogueBtn.addEventListener('click', () => insertFormattedElement('dialogue'));
+      parentheticalBtn.addEventListener('click', () => insertFormattedElement('parenthetical'));
+      transitionBtn.addEventListener('click', () => insertFormattedElement('transition'));
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 's') {
+          e.preventDefault();
+          saveCurrentScript();
+        }
+        if (e.ctrlKey && e.key === 'n') {
+          e.preventDefault();
+          createNewScript();
+        }
+        if (e.ctrlKey && e.key === 'Enter') {
+          e.preventDefault();
+          addNewScene();
+        }
+      });
+
+      // Functions
+      function loadScripts() {
+        scriptSelector.innerHTML = '';
+        
+        if (Object.keys(scripts).length === 0) {
+          // Create a default script if none exist
+          scripts['My First Script'] = '';
+          localStorage.setItem('scriptcraft_scripts', JSON.stringify(scripts));
+        }
+        
+        Object.keys(scripts).forEach(name => {
+          const option = document.createElement('option');
+          option.value = name;
+          option.textContent = name;
+          scriptSelector.appendChild(option);
+        });
+        
+        // Select the first script by default
+        if (scriptSelector.options.length > 0) {
+          scriptSelector.selectedIndex = 0;
+          currentScript = scriptSelector.value;
+          currentScriptTitle.textContent = currentScript;
+          scriptEditor.innerHTML = scripts[currentScript] || '';
+          addToRecentScripts(currentScript);
+          loadScenes();
+        }
+      }
+
+      function createNewScript() {
+        const name = prompt('Enter script name:', `Script ${Object.keys(scripts).length + 1}`);
+        if (!name) return;
+        
+        scripts[name] = '';
+        localStorage.setItem('scriptcraft_scripts', JSON.stringify(scripts));
+        loadScripts();
+        
+        // Select the new script
+        scriptSelector.value = name;
+        currentScript = name;
+        currentScriptTitle.textContent = name;
+        scriptEditor.innerHTML = '';
+        addToRecentScripts(name);
+      }
+
+      function renameCurrentScript() {
+        if (!currentScript) return alert('No script selected.');
+        
+        const newName = prompt('Rename script:', currentScript);
+        if (!newName || newName === currentScript) return;
+        
+        scripts[newName] = scripts[currentScript];
+        delete scripts[currentScript];
+        localStorage.setItem('scriptcraft_scripts', JSON.stringify(scripts));
+        
+        // Update scenes reference if it exists
+        if (scenes[currentScript]) {
+          scenes[newName] = scenes[currentScript];
+          delete scenes[currentScript];
+          localStorage.setItem('scriptcraft_scenes', JSON.stringify(scenes));
+        }
+        
+        // Update recent scripts
+        recentScriptList = recentScriptList.map(name => name === currentScript ? newName : name);
+        localStorage.setItem('scriptcraft_recent', JSON.stringify(recentScriptList));
+        
+        currentScript = newName;
+        loadScripts();
+        scriptSelector.value = newName;
+        currentScriptTitle.textContent = newName;
+        updateRecentScripts();
+      }
+
+      function duplicateCurrentScript() {
+        if (!currentScript) return alert('No script selected.');
+        
+        const newName = prompt('Duplicate script as:', `${currentScript} (Copy)`);
+        if (!newName) return;
+        
+        scripts[newName] = scripts[currentScript];
+        localStorage.setItem('scriptcraft_scripts', JSON.stringify(scripts));
+        
+        // Duplicate scenes if they exist
+        if (scenes[currentScript]) {
+          scenes[newName] = JSON.parse(JSON.stringify(scenes[currentScript]));
+          localStorage.setItem('scriptcraft_scenes', JSON.stringify(scenes));
+        }
+        
+        loadScripts();
+        
+        scriptSelector.value = newName;
+        currentScript = newName;
+        currentScriptTitle.textContent = newName;
+        addToRecentScripts(newName);
+      }
+
+      function deleteCurrentScript() {
+        if (!currentScript) return alert('No script selected.');
+        if (!confirm(`Are you sure you want to delete "${currentScript}"? This cannot be undone.`)) return;
+        
+        delete scripts[currentScript];
+        localStorage.setItem('scriptcraft_scripts', JSON.stringify(scripts));
+        
+        // Remove scenes if they exist
+        if (scenes[currentScript]) {
+          delete scenes[currentScript];
+          localStorage.setItem('scriptcraft_scenes', JSON.stringify(scenes));
+        }
+        
+        // Remove from recent scripts
+        recentScriptList = recentScriptList.filter(name => name !== currentScript);
+        localStorage.setItem('scriptcraft_recent', JSON.stringify(recentScriptList));
+        updateRecentScripts();
+        
+        currentScript = '';
+        currentScriptTitle.textContent = 'Untitled Script';
+        scriptEditor.innerHTML = '';
+        scenesContainer.innerHTML = '';
+        loadScripts();
+      }
+
+      function saveCurrentScript() {
+        if (!currentScript) return alert('Please select or create a script first.');
+        
+        scripts[currentScript] = scriptEditor.innerHTML;
+        localStorage.setItem('scriptcraft_scripts', JSON.stringify(scripts));
+        
+        // Save scenes
+        const sceneElements = Array.from(scenesContainer.querySelectorAll('.scene-card'));
+        const sceneData = sceneElements.map(scene => {
+          return {
+            title: scene.querySelector('input').value,
+            description: scene.querySelector('textarea').value,
+            // You would also save canvas data here in a real app
+          };
+        });
+        
+        scenes[currentScript] = sceneData;
+        localStorage.setItem('scriptcraft_scenes', JSON.stringify(scenes));
+        
+        // Show save confirmation
+        const originalText = saveScript.innerHTML;
+        saveScript.innerHTML = '<i class="fas fa-check"></i> Saved!';
+        saveScript.classList.remove('bg-blue-600', 'hover:bg-blue-500');
+        saveScript.classList.add('bg-green-600', 'hover:bg-green-500');
+        
+        setTimeout(() => {
+          saveScript.innerHTML = originalText;
+          saveScript.classList.remove('bg-green-600', 'hover:bg-green-500');
+          saveScript.classList.add('bg-blue-600', 'hover:bg-blue-500');
+        }, 2000);
+      }
+
+      function clearCurrentScript() {
+        if (!confirm('Are you sure you want to clear the current script? This cannot be undone.')) return;
+        scriptEditor.innerHTML = '';
+        updateCounts();
+      }
+
+      function loadScenes() {
+        scenesContainer.innerHTML = '';
+        
+        if (currentScript && scenes[currentScript]) {
+          scenes[currentScript].forEach(sceneData => {
+            const sceneCard = createSceneCard();
+            sceneCard.querySelector('input').value = sceneData.title || '';
+            sceneCard.querySelector('textarea').value = sceneData.description || '';
+            scenesContainer.appendChild(sceneCard);
+          });
+        }
+      }
+
+      function addNewScene() {
+        if (!currentScript) {
+          alert('Please select or create a script first.');
+          return;
+        }
+        
+        const sceneCard = createSceneCard();
+        scenesContainer.appendChild(sceneCard);
+        
+        // Scroll to the new scene
+        setTimeout(() => {
+          sceneCard.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+
+      function createSceneCard() {
+        const sceneId = Date.now();
+        
+        const wrapper = document.createElement('div');
+        wrapper.className = 'scene-card bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden animate-fade-in';
+        wrapper.dataset.sceneId = sceneId;
+        
+        // Scene Header
+        const header = document.createElement('div');
+        header.className = 'bg-gray-50 px-6 py-3 border-b border-gray-200 flex justify-between items-center';
+        
+        const headerLeft = document.createElement('div');
+        headerLeft.className = 'flex items-center space-x-3';
+        
+        const sceneIcon = document.createElement('div');
+        sceneIcon.className = 'w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600';
+        sceneIcon.innerHTML = '<i class="fas fa-film"></i>';
+        
+        const sceneTitle = document.createElement('input');
+        sceneTitle.type = 'text';
+        sceneTitle.placeholder = 'Scene Title';
+        sceneTitle.className = 'bg-transparent border-none focus:ring-0 font-medium text-gray-800 w-full max-w-md';
+        
+        headerLeft.appendChild(sceneIcon);
+        headerLeft.appendChild(sceneTitle);
+        
+        const headerRight = document.createElement('div');
+        headerRight.className = 'flex items-center space-x-2';
+        
+        const moveUpBtn = document.createElement('button');
+        moveUpBtn.className = 'p-1 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded';
+        moveUpBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+        moveUpBtn.title = 'Move scene up';
+        
+        const moveDownBtn = document.createElement('button');
+        moveDownBtn.className = 'p-1 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded';
+        moveDownBtn.innerHTML = '<i class="fas fa-arrow-down"></i>';
+        moveDownBtn.title = 'Move scene down';
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'p-1 text-gray-500 hover:text-red-600 hover:bg-gray-100 rounded';
+        deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+        deleteBtn.title = 'Delete scene';
+        
+        headerRight.appendChild(moveUpBtn);
+        headerRight.appendChild(moveDownBtn);
+        headerRight.appendChild(deleteBtn);
+        
+        header.appendChild(headerLeft);
+        header.appendChild(headerRight);
+        
+        // Scene Content
+        const content = document.createElement('div');
+        content.className = 'p-6';
+        
+        // Description
+        const descLabel = document.createElement('label');
+        descLabel.className = 'block text-sm font-medium text-gray-700 mb-1';
+        descLabel.textContent = 'Scene Description';
+        
+        const descTextarea = document.createElement('textarea');
+        descTextarea.className = 'w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500';
+        descTextarea.placeholder = 'Describe the scene, action, and characters...';
+        descTextarea.rows = 3;
+        
+        // Drawing Canvas
+        const canvasLabel = document.createElement('label');
+        canvasLabel.className = 'block text-sm font-medium text-gray-700 mt-4 mb-1';
+        canvasLabel.textContent = 'Storyboard Sketch';
+        
+        const canvasContainer = document.createElement('div');
+        canvasContainer.className = 'relative';
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = 800;
+        canvas.height = 450;
+        canvas.className = 'w-full border border-gray-300 rounded-md drawing-canvas bg-white';
+        
+        const canvasToolbar = document.createElement('div');
+        canvasToolbar.className = 'flex flex-wrap items-center gap-3 mt-2 p-3 bg-gray-50 rounded-md border border-gray-200';
+        
+        // Brush Size
+        const brushSizeLabel = document.createElement('span');
+        brushSizeLabel.className = 'text-sm text-gray-700';
+        brushSizeLabel.textContent = 'Size:';
+        
+        const brushSize = document.createElement('input');
+        brushSize.type = 'range';
+        brushSize.min = '1';
+        brushSize.max = '20';
+        brushSize.value = '3';
+        brushSize.className = 'w-24';
+        
+        // Brush Color
+        const brushColorLabel = document.createElement('span');
+        brushColorLabel.className = 'text-sm text-gray-700';
+        brushColorLabel.textContent = 'Color:';
+        
+        const brushColor = document.createElement('input');
+        brushColor.type = 'color';
+        brushColor.value = '#000000';
+        brushColor.className = 'w-8 h-8 cursor-pointer';
+        
+        // Brush Type
+        const brushTypeLabel = document.createElement('span');
+        brushTypeLabel.className = 'text-sm text-gray-700';
+        brushTypeLabel.textContent = 'Brush:';
+        
+        const brushType = document.createElement('select');
+        brushType.className = 'text-sm border border-gray-300 rounded px-2 py-1';
+        
+        const roundOption = document.createElement('option');
+        roundOption.value = 'round';
+        roundOption.textContent = 'Round';
+        
+        const squareOption = document.createElement('option');
+        squareOption.value = 'square';
+        squareOption.textContent = 'Square';
+        
+        brushType.appendChild(roundOption);
+        brushType.appendChild(squareOption);
+        
+        // Tools
+        const eraserBtn = document.createElement('button');
+        eraserBtn.className = 'flex items-center space-x-1 px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-sm';
+        eraserBtn.innerHTML = '<i class="fas fa-eraser"></i><span>Eraser</span>';
+        
+        const clearBtn = document.createElement('button');
+        clearBtn.className = 'flex items-center space-x-1 px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-sm';
+        clearBtn.innerHTML = '<i class="fas fa-trash-alt"></i><span>Clear</span>';
+        
+        // Add elements to toolbar
+        canvasToolbar.appendChild(brushSizeLabel);
+        canvasToolbar.appendChild(brushSize);
+        canvasToolbar.appendChild(brushColorLabel);
+        canvasToolbar.appendChild(brushColor);
+        canvasToolbar.appendChild(brushTypeLabel);
+        canvasToolbar.appendChild(brushType);
+        canvasToolbar.appendChild(eraserBtn);
+        canvasToolbar.appendChild(clearBtn);
+        
+        // Add elements to canvas container
+        canvasContainer.appendChild(canvas);
+        
+        // Add all to content
+        content.appendChild(descLabel);
+        content.appendChild(descTextarea);
+        content.appendChild(canvasLabel);
+        content.appendChild(canvasContainer);
+        content.appendChild(canvasToolbar);
+        
+        // Add all to wrapper
+        wrapper.appendChild(header);
+        wrapper.appendChild(content);
+        
+        // Canvas Drawing Logic
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let isErasing = false;
+        let lastX = 0;
+        let lastY = 0;
+        
+        // Initialize white background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Drawing functions
+        function startDrawing(e) {
+          isDrawing = true;
+          [lastX, lastY] = getPosition(e);
+        }
+        
+        function stopDrawing() {
+          isDrawing = false;
+        }
+        
+        function draw(e) {
+          if (!isDrawing) return;
+          
+          const [x, y] = getPosition(e);
+          const size = parseInt(brushSize.value);
+          const color = isErasing ? '#ffffff' : brushColor.value;
+          
+          ctx.beginPath();
+          ctx.lineWidth = size;
+          ctx.lineCap = brushType.value;
+          ctx.lineJoin = 'round';
+          ctx.strokeStyle = color;
+          ctx.moveTo(lastX, lastY);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          
+          [lastX, lastY] = [x, y];
+        }
+        
+        function getPosition(e) {
+          const rect = canvas.getBoundingClientRect();
+          let x, y;
+          
+          if (e.type.includes('touch')) {
+            x = e.touches[0].clientX - rect.left;
+            y = e.touches[0].clientY - rect.top;
+          } else {
+            x = e.clientX - rect.left;
+            y = e.clientY - rect.top;
+          }
+          
+          return [x, y];
+        }
+        
+        // Event Listeners for drawing
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+        
+        // Touch support
+        canvas.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          startDrawing(e);
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+          e.preventDefault();
+          draw(e);
+        });
+        
+        canvas.addEventListener('touchend', stopDrawing);
+        
+        // Toolbar events
+        eraserBtn.addEventListener('click', () => {
+          isErasing = !isErasing;
+          eraserBtn.classList.toggle('bg-gray-300', isErasing);
+        });
+        
+        clearBtn.addEventListener('click', () => {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        });
+        
+        // Scene management
+        deleteBtn.addEventListener('click', () => {
+          if (confirm('Are you sure you want to delete this scene?')) {
+            wrapper.remove();
+          }
+        });
+        
+        moveUpBtn.addEventListener('click', () => {
+          if (wrapper.previousElementSibling) {
+            wrapper.parentNode.insertBefore(wrapper, wrapper.previousElementSibling);
+          }
+        });
+        
+        moveDownBtn.addEventListener('click', () => {
+          if (wrapper.nextElementSibling) {
+            wrapper.parentNode.insertBefore(wrapper.nextElementSibling, wrapper);
+          }
+        });
+        
+        return wrapper;
+      }
+
+      function updateCounts() {
+        const text = scriptEditor.textContent || '';
+        characterCount.textContent = text.length;
+        wordCount.textContent = text.trim() ? text.trim().split(/\s+/).length : 0;
+      }
+
+      function insertFormattedElement(type) {
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+        
+        const range = selection.getRangeAt(0);
+        const element = document.createElement('div');
+        element.className = type;
+        
+        // Set default content based on type
+        switch(type) {
+          case 'scene-heading':
+            element.textContent = 'INT. LOCATION - DAY';
+            break;
+          case 'character':
+            element.textContent = 'CHARACTER NAME:';
+            break;
+          case 'parenthetical':
+            element.textContent = '(action or emotion)';
+            break;
+          case 'transition':
+            element.textContent = 'CUT TO:';
+            break;
+          default:
+            element.textContent = '';
+        }
+        
+        // Insert the element
+        range.deleteContents();
+        range.insertNode(element);
+        
+        // Move cursor inside the new element
+        const newRange = document.createRange();
+        newRange.selectNodeContents(element);
+        newRange.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+        
+        // Focus the editor
+        scriptEditor.focus();
+      }
+      
+      function autoFormatScript() {
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+        
+        const range = selection.getRangeAt(0);
+        const node = range.startContainer;
+        
+        // If we're at the start of a new line, check previous line to determine formatting
+        if (range.startOffset === 0 && node.nodeType === Node.TEXT_NODE) {
+          const parent = node.parentNode;
+          const previousSibling = parent.previousSibling;
+          
+          if (previousSibling) {
+            const prevText = previousSibling.textContent.trim().toUpperCase();
+            
+            // Auto-format based on previous line
+            if (prevText.startsWith('INT.') || prevText.startsWith('EXT.')) {
+              // After scene heading comes action
+              parent.className = 'action';
+            } 
+            else if (prevText.endsWith(':')) {
+              // After character name comes dialogue
+              parent.className = 'dialogue';
+            }
+            else if (prevText.startsWith('(') && prevText.endsWith(')')) {
+              // After parenthetical comes dialogue
+              parent.className = 'dialogue';
+            }
+          }
+        }
+        
+        // Format current line based on content
+        const currentLine = range.startContainer.parentNode;
+        const text = currentLine.textContent.trim();
+        
+        if (text.match(/^(INT\.|EXT\.)/i)) {
+          currentLine.className = 'scene-heading';
+        } 
+        else if (text.endsWith(':')) {
+          currentLine.className = 'character';
+        }
+        else if (text.startsWith('(') && text.endsWith(')')) {
+          currentLine.className = 'parenthetical';
+        }
+        else if (text.match(/^(CUT TO:|FADE (IN|OUT)\.|DISSOLVE TO:)/i)) {
+          currentLine.className = 'transition';
+        }
+        else if (!currentLine.className) {
+          currentLine.className = 'action';
+        }
+      }
+      
+      function handleKeyDown(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          
+          const selection = window.getSelection();
+          const range = selection.getRangeAt(0);
+          const currentLine = range.startContainer.parentNode;
+          const text = currentLine.textContent.trim();
+          
+          // Create new line with appropriate formatting
+          const newLine = document.createElement('div');
+          
+          // Determine formatting for new line based on current line
+          if (currentLine.className === 'scene-heading') {
+            newLine.className = 'action';
+          }
+          else if (currentLine.className === 'character') {
+            newLine.className = 'dialogue';
+          }
+          else if (currentLine.className === 'parenthetical') {
+            newLine.className = 'dialogue';
+          }
+          else if (currentLine.className === 'transition') {
+            newLine.className = 'scene-heading';
+          }
+          else {
+            newLine.className = 'action';
+          }
+          
+          // Insert the new line
+          range.deleteContents();
+          range.insertNode(newLine);
+          
+          // Move cursor to new line
+          const newRange = document.createRange();
+          newRange.selectNodeContents(newLine);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+          
+          // Focus the editor
+          scriptEditor.focus();
+        }
+        // Tab key for indentation
+        else if (e.key === 'Tab') {
+          e.preventDefault();
+          
+          const selection = window.getSelection();
+          if (!selection.rangeCount) return;
+          
+          const range = selection.getRangeAt(0);
+          const tabNode = document.createTextNode('\u00a0\u00a0\u00a0\u00a0');
+          range.insertNode(tabNode);
+          
+          // Move cursor after tab
+          range.setStartAfter(tabNode);
+          range.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      }
+
+      function addToRecentScripts(name) {
+        if (!name) return;
+        
+        // Remove if already exists
+        recentScriptList = recentScriptList.filter(n => n !== name);
+        
+        // Add to beginning
+        recentScriptList.unshift(name);
+        
+        // Keep only last 5
+        if (recentScriptList.length > 5) {
+          recentScriptList = recentScriptList.slice(0, 5);
+        }
+        
+        localStorage.setItem('scriptcraft_recent', JSON.stringify(recentScriptList));
+        updateRecentScripts();
+      }
+
+      function updateRecentScripts() {
+        recentScripts.innerHTML = '';
+        
+        if (recentScriptList.length === 0) {
+          const li = document.createElement('li');
+          li.className = 'text-sm text-gray-400 italic';
+          li.textContent = 'No recent scripts';
+          recentScripts.appendChild(li);
+          return;
+        }
+        
+        recentScriptList.forEach(name => {
+          const li = document.createElement('li');
+          
+          const btn = document.createElement('button');
+          btn.className = 'w-full text-left px-2 py-1 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded flex items-center space-x-2';
+          btn.innerHTML = `<i class="fas fa-file-alt"></i><span>${name}</span>`;
+          
+          btn.addEventListener('click', () => {
+            scriptSelector.value = name;
+            scriptSelector.dispatchEvent(new Event('change'));
+          });
+          
+          li.appendChild(btn);
+          recentScripts.appendChild(li);
+        });
+      }
+
+      function exportToPdf() {
+        alert('PDF export functionality would be implemented here.\nIn a real app, this would generate a PDF of your script and storyboards.');
+      }
+
+      function exportToImage() {
+        alert('Image export functionality would be implemented here.\nIn a real app, this would generate image files of your storyboards.');
+      }
+
+      function createNewProject() {
+        if (confirm('Create a new project? This will clear all current scripts.')) {
+          scripts = {};
+          localStorage.setItem('scriptcraft_scripts', JSON.stringify(scripts));
+          scenes = {};
+          localStorage.setItem('scriptcraft_scenes', JSON.stringify(scenes));
+          recentScriptList = [];
+          localStorage.setItem('scriptcraft_recent', JSON.stringify(recentScriptList));
+          loadScripts();
+          updateRecentScripts();
+          scriptEditor.innerHTML = '';
+          scenesContainer.innerHTML = '';
+          currentScript = '';
+          currentScriptTitle.textContent = 'Untitled Script';
+        }
+      }
+    });
+  </script>
+</body>
+</html>
