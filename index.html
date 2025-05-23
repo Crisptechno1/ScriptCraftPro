@@ -176,6 +176,88 @@
     .show {
       display: block;
     }
+    
+    /* Image upload button */
+    .image-upload-btn {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+    }
+    
+    .image-upload-btn input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+    
+    /* Image preview in canvas */
+    .canvas-image {
+      max-width: 100%;
+      max-height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    
+    /* Image controls */
+    .image-controls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 5px;
+      border-radius: 4px;
+      display: flex;
+      gap: 5px;
+      z-index: 10;
+    }
+    
+    .image-control-btn {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      padding: 2px 5px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .image-control-btn:hover {
+      background: #f0f0f0;
+    }
+    
+    /* Image editing controls */
+    .image-edit-controls {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 8px;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      z-index: 10;
+    }
+    
+    .image-edit-slider {
+      width: 150px;
+    }
+    
+    .image-edit-label {
+      font-size: 12px;
+      color: #333;
+      margin-bottom: 2px;
+    }
+    
+    /* Image selection outline */
+    .selected-image {
+      outline: 2px dashed #3b82f6;
+      cursor: move;
+    }
   </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-100">
@@ -414,6 +496,8 @@
               <ul class="list-disc pl-5 space-y-1">
                 <li>Choose brush size and shape</li>
                 <li>Select colors from the palette</li>
+                <li>Upload and edit images as backgrounds or references</li>
+                <li>Move, resize, and rotate uploaded images</li>
                 <li>Use the eraser tool to correct mistakes</li>
                 <li>Clear the canvas to start over</li>
               </ul>
@@ -635,7 +719,7 @@
         localStorage.setItem('scriptcraft_scripts', JSON.stringify(scripts));
         
         // Duplicate scenes if they exist
-        if (scenes[currentScript]) {
+        if (scenses[currentScript]) {
           scenes[newName] = JSON.parse(JSON.stringify(scenes[currentScript]));
           localStorage.setItem('scriptcraft_scenes', JSON.stringify(scenes));
         }
@@ -682,10 +766,13 @@
         // Save scenes
         const sceneElements = Array.from(scenesContainer.querySelectorAll('.scene-card'));
         const sceneData = sceneElements.map(scene => {
+          const canvas = scene.querySelector('canvas');
+          const imageData = canvas.toDataURL('image/png');
+          
           return {
             title: scene.querySelector('input').value,
             description: scene.querySelector('textarea').value,
-            // You would also save canvas data here in a real app
+            imageData: imageData
           };
         });
         
@@ -719,6 +806,19 @@
             const sceneCard = createSceneCard();
             sceneCard.querySelector('input').value = sceneData.title || '';
             sceneCard.querySelector('textarea').value = sceneData.description || '';
+            
+            // Load image if it exists
+            if (sceneData.imageData) {
+              const canvas = sceneCard.querySelector('canvas');
+              const ctx = canvas.getContext('2d');
+              
+              const img = new Image();
+              img.onload = function() {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              };
+              img.src = sceneData.imageData;
+            }
+            
             scenesContainer.appendChild(sceneCard);
           });
         }
@@ -861,6 +961,22 @@
         brushType.appendChild(roundOption);
         brushType.appendChild(squareOption);
         
+        // Image Upload Button
+        const imageUploadBtn = document.createElement('div');
+        imageUploadBtn.className = 'image-upload-btn flex items-center space-x-1 px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-sm';
+        imageUploadBtn.innerHTML = '<i class="fas fa-image"></i><span>Upload Image</span>';
+        
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        
+        imageUploadBtn.appendChild(fileInput);
+        
+        // Image Edit Mode Toggle
+        const imageEditToggle = document.createElement('button');
+        imageEditToggle.className = 'flex items-center space-x-1 px-3 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded text-sm';
+        imageEditToggle.innerHTML = '<i class="fas fa-edit"></i><span>Edit Images</span>';
+        
         // Tools
         const eraserBtn = document.createElement('button');
         eraserBtn.className = 'flex items-center space-x-1 px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-sm';
@@ -877,6 +993,8 @@
         canvasToolbar.appendChild(brushColor);
         canvasToolbar.appendChild(brushTypeLabel);
         canvasToolbar.appendChild(brushType);
+        canvasToolbar.appendChild(imageUploadBtn);
+        canvasToolbar.appendChild(imageEditToggle);
         canvasToolbar.appendChild(eraserBtn);
         canvasToolbar.appendChild(clearBtn);
         
@@ -898,8 +1016,19 @@
         const ctx = canvas.getContext('2d');
         let isDrawing = false;
         let isErasing = false;
-        let lastX = 0;
-        let lastY = 0;
+        let isImageEditMode = false;
+        let currentImage = null;
+        let selectedImage = null;
+        let imagesOnCanvas = [];
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let originalX = 0;
+        let originalY = 0;
+        let originalWidth = 0;
+        let originalHeight = 0;
+        let isResizing = false;
+        let resizeHandle = null;
         
         // Initialize white background
         ctx.fillStyle = '#ffffff';
@@ -907,6 +1036,8 @@
         
         // Drawing functions
         function startDrawing(e) {
+          if (isImageEditMode) return;
+          
           isDrawing = true;
           [lastX, lastY] = getPosition(e);
         }
@@ -916,7 +1047,7 @@
         }
         
         function draw(e) {
-          if (!isDrawing) return;
+          if (!isDrawing || isImageEditMode) return;
           
           const [x, y] = getPosition(e);
           const size = parseInt(brushSize.value);
@@ -950,23 +1081,185 @@
         }
         
         // Event Listeners for drawing
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDrawing);
-        canvas.addEventListener('mouseout', stopDrawing);
+        canvas.addEventListener('mousedown', handleCanvasMouseDown);
+        canvas.addEventListener('mousemove', handleCanvasMouseMove);
+        canvas.addEventListener('mouseup', handleCanvasMouseUp);
+        canvas.addEventListener('mouseout', handleCanvasMouseUp);
         
         // Touch support
         canvas.addEventListener('touchstart', (e) => {
           e.preventDefault();
-          startDrawing(e);
+          handleCanvasMouseDown(e);
         });
         
         canvas.addEventListener('touchmove', (e) => {
           e.preventDefault();
-          draw(e);
+          handleCanvasMouseMove(e);
         });
         
-        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          handleCanvasMouseUp(e);
+        });
+        
+        function handleCanvasMouseDown(e) {
+          if (isImageEditMode) {
+            const [x, y] = getPosition(e);
+            
+            // Check if we clicked on a resize handle
+            if (selectedImage) {
+              resizeHandle = getResizeHandleAt(x, y, selectedImage);
+              if (resizeHandle) {
+                isResizing = true;
+                originalWidth = selectedImage.width;
+                originalHeight = selectedImage.height;
+                return;
+              }
+            }
+            
+            // Check if we clicked on an image
+            const clickedImage = getImageAt(x, y);
+            if (clickedImage) {
+              selectedImage = clickedImage;
+              isDragging = true;
+              dragStartX = x;
+              dragStartY = y;
+              originalX = selectedImage.x;
+              originalY = selectedImage.y;
+              redrawCanvas();
+              return;
+            } else {
+              selectedImage = null;
+              redrawCanvas();
+            }
+          } else {
+            startDrawing(e);
+          }
+        }
+        
+        function handleCanvasMouseMove(e) {
+          if (isImageEditMode) {
+            const [x, y] = getPosition(e);
+            
+            if (isDragging && selectedImage) {
+              const dx = x - dragStartX;
+              const dy = y - dragStartY;
+              selectedImage.x = originalX + dx;
+              selectedImage.y = originalY + dy;
+              redrawCanvas();
+            } else if (isResizing && selectedImage) {
+              const dx = x - dragStartX;
+              const dy = y - dragStartY;
+              
+              switch(resizeHandle) {
+                case 'top-left':
+                  selectedImage.x = originalX + dx;
+                  selectedImage.y = originalY + dy;
+                  selectedImage.width = originalWidth - dx;
+                  selectedImage.height = originalHeight - dy;
+                  break;
+                case 'top-right':
+                  selectedImage.y = originalY + dy;
+                  selectedImage.width = originalWidth + dx;
+                  selectedImage.height = originalHeight - dy;
+                  break;
+                case 'bottom-left':
+                  selectedImage.x = originalX + dx;
+                  selectedImage.width = originalWidth - dx;
+                  selectedImage.height = originalHeight + dy;
+                  break;
+                case 'bottom-right':
+                  selectedImage.width = originalWidth + dx;
+                  selectedImage.height = originalHeight + dy;
+                  break;
+              }
+              
+              redrawCanvas();
+            }
+          } else {
+            draw(e);
+          }
+        }
+        
+        function handleCanvasMouseUp(e) {
+          if (isImageEditMode) {
+            isDragging = false;
+            isResizing = false;
+            resizeHandle = null;
+          } else {
+            stopDrawing();
+          }
+        }
+        
+        function getImageAt(x, y) {
+          for (let i = imagesOnCanvas.length - 1; i >= 0; i--) {
+            const img = imagesOnCanvas[i];
+            if (x >= img.x && x <= img.x + img.width &&
+                y >= img.y && y <= img.y + img.height) {
+              return img;
+            }
+          }
+          return null;
+        }
+        
+        function getResizeHandleAt(x, y, img) {
+          if (!img) return null;
+          
+          const handleSize = 8;
+          const handles = [
+            { name: 'top-left', x: img.x, y: img.y },
+            { name: 'top-right', x: img.x + img.width, y: img.y },
+            { name: 'bottom-left', x: img.x, y: img.y + img.height },
+            { name: 'bottom-right', x: img.x + img.width, y: img.y + img.height }
+          ];
+          
+          for (const handle of handles) {
+            if (x >= handle.x - handleSize && x <= handle.x + handleSize &&
+                y >= handle.y - handleSize && y <= handle.y + handleSize) {
+              return handle.name;
+            }
+          }
+          
+          return null;
+        }
+        
+        function drawResizeHandles(img) {
+          if (!img) return;
+          
+          ctx.fillStyle = '#3b82f6';
+          const handleSize = 6;
+          
+          // Top-left
+          ctx.fillRect(img.x - handleSize/2, img.y - handleSize/2, handleSize, handleSize);
+          // Top-right
+          ctx.fillRect(img.x + img.width - handleSize/2, img.y - handleSize/2, handleSize, handleSize);
+          // Bottom-left
+          ctx.fillRect(img.x - handleSize/2, img.y + img.height - handleSize/2, handleSize, handleSize);
+          // Bottom-right
+          ctx.fillRect(img.x + img.width - handleSize/2, img.y + img.height - handleSize/2, handleSize, handleSize);
+        }
+        
+        function redrawCanvas() {
+          // Clear canvas
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Redraw all images
+          for (const img of imagesOnCanvas) {
+            ctx.drawImage(img.element, img.x, img.y, img.width, img.height);
+          }
+          
+          // Draw selection outline and resize handles if in edit mode
+          if (isImageEditMode && selectedImage) {
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(selectedImage.x, selectedImage.y, selectedImage.width, selectedImage.height);
+            ctx.setLineDash([]);
+            
+            drawResizeHandles(selectedImage);
+          }
+        }
         
         // Toolbar events
         eraserBtn.addEventListener('click', () => {
@@ -975,8 +1268,82 @@
         });
         
         clearBtn.addEventListener('click', () => {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          if (confirm('Clear the entire canvas?')) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            imagesOnCanvas = [];
+            selectedImage = null;
+          }
+        });
+        
+        // Image upload functionality
+        fileInput.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          
+          if (!file.type.match('image.*')) {
+            alert('Please select an image file.');
+            return;
+          }
+          
+          const reader = new FileReader();
+          reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+              // Calculate dimensions to fit within canvas while maintaining aspect ratio
+              const maxWidth = canvas.width * 0.8;
+              const maxHeight = canvas.height * 0.8;
+              let width = img.width;
+              let height = img.height;
+              
+              if (width > maxWidth) {
+                    const ratio = maxWidth / width;
+                    width = maxWidth;
+                    height = height * ratio;
+                }
+                
+                if (height > maxHeight) {
+                    const ratio = maxHeight / height;
+                    height = maxHeight;
+                    width = width * ratio;
+                }
+              
+              // Center the image on canvas
+              const x = (canvas.width - width) / 2;
+              const y = (canvas.height - height) / 2;
+              
+              // Add to images array
+              const imageObj = {
+                element: img,
+                x: x,
+                y: y,
+                width: width,
+                height: height,
+                originalWidth: img.width,
+                originalHeight: img.height
+              };
+              
+              imagesOnCanvas.push(imageObj);
+              selectedImage = imageObj;
+              redrawCanvas();
+            };
+            img.src = event.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+        
+        // Image edit mode toggle
+        imageEditToggle.addEventListener('click', () => {
+          isImageEditMode = !isImageEditMode;
+          imageEditToggle.classList.toggle('bg-purple-300', isImageEditMode);
+          
+          if (isImageEditMode && imagesOnCanvas.length > 0) {
+            selectedImage = imagesOnCanvas[imagesOnCanvas.length - 1];
+          } else {
+            selectedImage = null;
+          }
+          
+          redrawCanvas();
         });
         
         // Scene management
